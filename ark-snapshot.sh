@@ -115,6 +115,10 @@ create_snapshot() {
 }
 
 restore_snapshot(){
+  echo  "       Instance of ARK Node found with:"
+  echo  "       System PID: $node, Forever PID $forever_process"
+  echo  "            Stopping ARK Node..."
+  forever stop $forever_process >&- 2>&-
   echo " + Restoring snapshot"
   echo "--------------------------------------------------"
   SNAPSHOT_FILE=`ls -t snapshot/ark_db* | head  -1`
@@ -132,6 +136,10 @@ restore_snapshot(){
      echo " "
      exit 1
   fi
+  cd $arkdir
+  forever start app.js --genesis genesisBlock.testnet.json --config config.testnet.json >&- 2>&-
+  echo "    ✔ ARK Node was successfully started"
+
 
 #snapshot restoring..
   export PGPASSWORD=$DB_PASS
