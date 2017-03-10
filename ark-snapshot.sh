@@ -22,7 +22,7 @@ if [ "\$USER" == "root" ]; then
 fi
 
 DB_NAME="ark_testnet"
-DB_USER=$USER
+DB_USER="ark"
 DB_PASS="password"
 SNAPSHOT_COUNTER=snapshot/counter.json
 SNAPSHOT_LOG=snapshot/snapshot.log
@@ -35,12 +35,63 @@ if [ ! -f "snapshot/counter.json" ]; then
 fi
 SNAPSHOT_DIRECTORY=snapshot/
 
+# Find parent PID
+function top_level_parent_pid {
+        # Look up the parent of the given PID.
+        pid=${1:-$$}
+        if [ "$pid" != "0" ]; then
+                stat=($(</proc/${pid}/stat))
+                ppid=${stat[3]}
+
+                # /sbin/init always has a PID of 1, so if you reach that, the current PID is
+                # the top-level parent. Otherwise, keep looking.
+                if [[ ${ppid} -eq 1 ]] ; then
+                        echo ${pid}
+                else
+                        top_level_parent_pid ${ppid}
+                fi
+        else
+                pid=0
+        fi
+}
+
+function proc_vars {
+        node=`pgrep -a "node" | grep ark-node | awk '{print $1}'`
+        if [ "$node" == "" ] ; then
+                node=0
+        fi
+
+        # Is Postgres running
+        pgres=`pgrep -a "postgres" | awk '{print $1}'`
+
+        # Find if forever process manager is runing
+        frvr=`pgrep -a "node" | grep forever | awk '{print $1}'`
+
+        # Find the top level process of node
+        top_lvl=$(top_level_parent_pid $node)
+
+        # Looking for ark-node installations and performing actions
+        arkdir=`locate -b ark-node`
+
+        # Getting the parent of the install path
+        parent=`dirname $arkdir 2>&1`
+
+        # Forever Process ID
+        forever_process=`forever --plain list | grep $node | sed -nr 's/.*\[(.*)\].*/\1/p'`
+
+        # Node process work directory
+        nwd=`pwdx $node 2>/dev/null | awk '{print $2}'`
+}
 
 NOW=$(date +"%d-%m-%Y - %T")
 ################################################################################
 
 create_snapshot() {
   export PGPASSWORD=$DB_PASS
+  echo  "       Instance of ARK Node found with:"
+  echo  "       System PID: $node, Forever PID $forever_process"
+  echo  "            Stopping ARK Node..."
+  forever stop $forever_process >&- 2>&-
   echo " + Creating snapshot"
   echo "--------------------------------------------------"
   echo "..."
@@ -54,6 +105,12 @@ create_snapshot() {
   else
     echo "$NOW -- OK snapshot created successfully at block$blockHeight ($dbSize)." | tee -a $SNAPSHOT_LOG
   fi
+
+  echo "            Starting ARK Node..."
+  cd $arkdir
+  forever start app.js --genesis genesisBlock.testnet.json --config config.testnet.json >&- 2>&-
+  echo "    ✔ ARK Node was successfully started"
+
 
 }
 
@@ -97,7 +154,7 @@ show_log(){
 }
 
 ################################################################################
-
+proc_vars
 case $1 in
 "create")
   create_snapshot
@@ -124,4 +181,3 @@ case $1 in
   echo "Try: bash ark-snapshot.sh help"
   ;;
 esac
-                                                                                                                                                    
