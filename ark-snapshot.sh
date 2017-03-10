@@ -22,7 +22,7 @@ if [ "\$USER" == "root" ]; then
 fi
 
 DB_NAME="ark_testnet"
-DB_USER="ark"
+DB_USER=$USER
 DB_PASS="password"
 SNAPSHOT_COUNTER=snapshot/counter.json
 SNAPSHOT_LOG=snapshot/snapshot.log
