@@ -19,6 +19,7 @@ bash ark-snapshot.sh help
     - create
     - restore
     - log
+    - schedule
 
 ###create
 Command _create_ is for create new snapshot, example of usage:<br>
