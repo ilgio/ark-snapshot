@@ -1,12 +1,12 @@
 #!/bin/bash
-VERSION="0.1"
+VERSION="0.3"
 
 export LC_ALL=en_US.UTF-8
 export LANG=en_US.UTF-8
 export LANGUAGE=en_US.UTF-8
 
 #============================================================
-#= snapshot.sh v0.1 created by ilgio                        =
+#= snapshot.sh v0.3 created by ilgio                        =
 #= Please consider voting for delegate ilgio                =
 #============================================================
 echo " "
@@ -161,8 +161,49 @@ show_log(){
   echo "--------------------------------------------------END"
 }
 
+
+schedule_cron(){
+        echo "All your crontab settings will be overwritten."
+
+        read -p "Do you want to continue (y/n)?" -n 1 -r
+        if [[  $REPLY =~ ^[Yy]$ ]]
+           then
+        echo " "
+        case $1 in
+        "hourly")
+                echo "0 * * * * cd $(pwd) && bash $(pwd)/ark-snapshot.sh create >> $(pwd)/cron.log" > schedule
+                sudo crontab schedule
+                echo "The snapshot has been scheduled every hour";
+        ;;
+        "daily")
+                echo "0 0 * * * cd $(pwd) && bash $(pwd)/ark-snapshot.sh create >> $(pwd)/cron.log" > schedule
+                sudo crontab schedule
+                echo "The snapshot has been scheduled once a day";
+        ;;
+        "weekly")
+                echo "0 0 * * 0 cd $(pwd) && bash $(pwd)/ark-snapshot.sh create >> $(pwd)/cron.log" > schedule
+                sudo crontab schedule
+                echo "The snapshot has been scheduled once a week";
+        ;;
+        "monthly")
+                echo "0 0 1 * * cd $(pwd) && bash $(pwd)/ark-snapshot.sh create >> $(pwd)/cron.log" > schedule
+                sudo crontab schedule
+                echo "The snapshot has been scheduled once a month";
+        ;;
+        *)
+        echo "Error: Wrong parameter for cron option."
+        ;;
+        esac
+
+        rm schedule
+
+        fi
+}
+
+
 ################################################################################
 proc_vars
+
 case $1 in
 "create")
   create_snapshot
@@ -173,6 +214,9 @@ case $1 in
 "log")
   show_log
   ;;
+"schedule")
+  schedule_cron $2
+  ;;
 "hello")
   echo "Hello my friend - $NOW"
   ;;
@@ -181,11 +225,17 @@ case $1 in
   echo "  create   - Create new snapshot"
   echo "  restore  - Restore the last snapshot available in folder snapshot/"
   echo "  log      - Display log"
+  echo "  schedule - Schedule snapshot creation periodically, available parameters:"
+  echo "                - hourly"
+  echo "                - daily"
+  echo "                - weekly"
+  echo "                - monthly"
+  echo "                Example $ bash ark-snapshot.sh schedule daily"
   ;;
 *)
   echo "Error: Unrecognized command."
   echo ""
-  echo "Available commands are: create, restore, log, help"
+  echo "Available commands are: create, restore, log, cron, help"
   echo "Try: bash ark-snapshot.sh help"
   ;;
 esac
